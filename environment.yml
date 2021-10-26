@@ -1,0 +1,7 @@
+name: cs6742_a2
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyterlab
+  - python=3.9
