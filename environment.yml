@@ -4,4 +4,6 @@ channels:
   - defaults
 dependencies:
   - jupyterlab
+  - numpy
+  - pandas
   - python=3.9
