@@ -1,3 +1,5 @@
 conda activate cs6742_a2
-python data_collection.py --subreddit AmITheAsshole --year 2018 --output_post 2018_posts.csv --output_comment 2018_comments.csv
+
+python data_collection.py --subreddit amitheasshole --year 2018 > 2018_log.csv 2>&1 #&
+python data_collection.py --subreddit amitheasshole --year 2019 > 2019_log.csv 2>&1 #&
 
