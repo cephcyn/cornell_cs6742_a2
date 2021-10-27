@@ -5,6 +5,7 @@ import numpy as np
 import time
 from datetime import datetime, date
 import argparse
+from os.path import exists
 
 # An export of data_collection.ipynb (as of 2021/10/26)
 
@@ -127,18 +128,28 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # do post scrapes
-    df_sub = scrape_subreddit_posts(args.subreddit, args.year)
-    # export checkpoint scrapes
-    df_sub.to_csv(f'{args.year}_posts_draft.csv')
-    # df_sub.to_hdf(f'{args.year}_posts.h5', key=f'data')
+    if not exists(f'{args.year}_posts_draft.pkl'):
+        df_sub = scrape_subreddit_posts(args.subreddit, args.year)
+        # export checkpoint scrapes
+        df_sub.to_csv(f'{args.year}_posts_draft.csv')
+        df_sub.to_pickle(f'{args.year}_posts_draft.pkl')
+        # df_sub.to_hdf(f'{args.year}_posts_draft.h5', key=f'data')
+    else:
+        df_sub = pd.read_pickle(f'{args.year}_posts_draft.pkl')
     
     # do per-post comment list scrapes
-    df_sub = scrape_post_comments(args.subreddit, df_sub)
-    # export checkpoint scrapes
-    df_sub.to_csv(f'{args.year}_posts.csv')
+    if not exists(f'{args.year}_posts.pkl'):
+        df_sub = scrape_post_comments(args.subreddit, df_sub)
+        # export checkpoint scrapes
+        df_sub.to_csv(f'{args.year}_posts.csv')
+        df_sub.to_pickle(f'{args.year}_posts.pkl')
+        # df_sub.to_hdf(f'{args.year}_posts.h5', key=f'data')
+    else:
+        df_sub = pd.read_pickle(f'{args.year}_posts.pkl')
     
     # do comment detail scrapes
     df_comm = scrape_full_comments(subreddit, df_sub)
     # export checkpoint scrapes
     df_comm.to_csv(f'{args.year}_comments.csv')
+    df_sub.to_pickle(f'{args.year}_comments.pkl')
     # df_comm.to_hdf(f'{args.year}_comments.h5', key=f'data')
