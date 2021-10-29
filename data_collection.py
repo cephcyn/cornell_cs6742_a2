@@ -148,7 +148,7 @@ if __name__ == "__main__":
         df_sub = pd.read_pickle(f'{args.year}_posts.pkl')
     
     # do comment detail scrapes
-    df_comm = scrape_full_comments(subreddit, df_sub)
+    df_comm = scrape_full_comments(args.subreddit, df_sub)
     # export checkpoint scrapes
     df_comm.to_csv(f'{args.year}_comments.csv')
     df_sub.to_pickle(f'{args.year}_comments.pkl')
