@@ -112,7 +112,6 @@ def scrape_full_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_
         print(f'Started from scratch')
     
     # do the comments detail scrape
-    TEMP=0
     for sub in df_sub.index:
         sub_id = df_sub.loc[sub]['id']
         sub_comms = df_sub.loc[sub]['comments']
@@ -124,9 +123,6 @@ def scrape_full_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_
         mini_comm = pd.DataFrame()
         while keep_commscraping:
             try:
-                TEMP+=1
-                if TEMP>=5:
-                    raise Exception('I know Python!')
                 with urllib.request.urlopen(
                     f'https://api.pushshift.io/reddit/comment/search/'
                     +f'?limit=1000&sort=asc&link_id={sub_id}&after={current_start}'
