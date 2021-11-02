@@ -69,19 +69,36 @@ def scrape_subreddit_posts(subreddit_name, scrape_year, backup_pkl_in=None, back
     return df_sub
 
 
-def scrape_post_comments(subreddit_name, df_sub):
+def scrape_post_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_out=None):
     # checkpoint output
     print(f'scraping given batch of posts for comment list')
     print(f' scrape START time: {time.strftime("%Y%m%d-%H%M%S", time.localtime())}', flush=True)
     t0 = time.process_time()
     
+    # load from backup if available
+    if (backup_pkl_in is not None) and exists(backup_pkl_in):
+        with open(backup_pkl_in, 'rb') as f:
+            comment_ids = pickle.load(f)
+        print(f'Loaded checkpoint: {backup_pkl_in}')
+    else:
+        comment_ids = []
+        print(f'Started from scratch')
+    
     # do the comments ID scrape
-    comment_ids = []
-    for sub_id in df_sub['id']:
-        with urllib.request.urlopen(
-            f'https://api.pushshift.io/reddit/submission/comment_ids/{sub_id}'
-        ) as url:
-            data = json.loads(url.read().decode())
+    for sub_id in df_sub['id'][len(comment_ids):]:
+        try:
+            with urllib.request.urlopen(
+                f'https://api.pushshift.io/reddit/submission/comment_ids/{sub_id}'
+            ) as url:
+                data = json.loads(url.read().decode())
+        except Exception as e:
+            print('EXCEPTION HAPPENED:')
+            print(e, flush=True)
+            if backup_pkl_out is not None:
+                with open(backup_pkl_out, 'wb') as f:
+                    pickle.dump(comment_ids, f)
+                print(f'Saved checkpoint: {backup_pkl_out}')
+            sys.exit()
         comment_ids.append(data['data'])
         if len(comment_ids)%50==0:
             print(f'got comments from these many posts so far: {len(comment_ids)}', flush=True)
@@ -94,6 +111,9 @@ def scrape_post_comments(subreddit_name, df_sub):
     
     # return scraped data
     df_sub = df_sub.reset_index(drop=True)
+    if backup_pkl_out is not None:
+        with open(backup_pkl_out, 'wb') as f:
+            pickle.dump(comment_ids, f)
     return df_sub
 
 
@@ -182,7 +202,8 @@ if __name__ == "__main__":
     
     # do per-post comment list scrapes
     if not exists(f'{args.year}_posts.pkl'):
-        df_sub = scrape_post_comments(args.subreddit, df_sub)
+        backup_posts = f'{args.year}_02_backup.pkl'
+        df_sub = scrape_post_comments(args.subreddit, df_sub, backup_pkl_in=backup_posts, backup_pkl_out=backup_posts)
         # export checkpoint scrapes
         df_sub.to_csv(f'{args.year}_posts.csv')
         df_sub.to_pickle(f'{args.year}_posts.pkl')
@@ -192,9 +213,9 @@ if __name__ == "__main__":
     
     # do comment detail scrapes
     if not exists(f'{args.year}_comments.pkl'):
-        backup_posts = f'{args.year}_02_backup.pkl'
+        backup_posts = f'{args.year}_03_backup.pkl'
         df_comm = scrape_full_comments(args.subreddit, df_sub, backup_pkl_in=backup_posts, backup_pkl_out=backup_posts)
         # export checkpoint scrapes
         df_comm.to_csv(f'{args.year}_comments.csv')
-        df_sub.to_pickle(f'{args.year}_comments.pkl')
+        df_comm.to_pickle(f'{args.year}_comments.pkl')
         # df_comm.to_hdf(f'{args.year}_comments.h5', key=f'data')
