@@ -4,7 +4,12 @@ channels:
   - defaults
 dependencies:
   - jupyterlab
+  - matplotlib
   - numpy
   - pandas
   - pytables
   - python=3.9
+  - pip
+  - scipy
+  - pip:
+    - networkx==2.6.3
