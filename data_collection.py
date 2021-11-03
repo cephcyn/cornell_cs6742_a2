@@ -69,54 +69,6 @@ def scrape_subreddit_posts(subreddit_name, scrape_year, backup_pkl_in=None, back
     return df_sub
 
 
-def scrape_post_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_out=None):
-    # checkpoint output
-    print(f'scraping given batch of posts for comment list')
-    print(f' scrape START time: {time.strftime("%Y%m%d-%H%M%S", time.localtime())}', flush=True)
-    t0 = time.process_time()
-    
-    # load from backup if available
-    if (backup_pkl_in is not None) and exists(backup_pkl_in):
-        with open(backup_pkl_in, 'rb') as f:
-            comment_ids = pickle.load(f)
-        print(f'Loaded checkpoint: {backup_pkl_in}')
-    else:
-        comment_ids = []
-        print(f'Started from scratch')
-    
-    # do the comments ID scrape
-    for sub_id in df_sub['id'][len(comment_ids):]:
-        try:
-            with urllib.request.urlopen(
-                f'https://api.pushshift.io/reddit/submission/comment_ids/{sub_id}'
-            ) as url:
-                data = json.loads(url.read().decode())
-        except Exception as e:
-            print('EXCEPTION HAPPENED:')
-            print(e, flush=True)
-            if backup_pkl_out is not None:
-                with open(backup_pkl_out, 'wb') as f:
-                    pickle.dump(comment_ids, f)
-                print(f'Saved checkpoint: {backup_pkl_out}')
-            sys.exit()
-        comment_ids.append(data['data'])
-        if len(comment_ids)%50==0:
-            print(f'got comments from these many posts so far: {len(comment_ids)}', flush=True)
-    df_sub['comments'] = comment_ids
-    print(f'should have {sum([len(x) for x in comment_ids])} comments total')
-            
-    # checkpoint output
-    print(f'   scrape END time: {time.strftime("%Y%m%d-%H%M%S", time.localtime())}')
-    print(f'    total DURATION: {time.process_time() - t0}', flush=True)
-    
-    # return scraped data
-    df_sub = df_sub.reset_index(drop=True)
-    if backup_pkl_out is not None:
-        with open(backup_pkl_out, 'wb') as f:
-            pickle.dump(comment_ids, f)
-    return df_sub
-
-
 def scrape_full_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_out=None):
     # checkpoint output
     print(f'scraping given batch of posts for comment details')
@@ -134,10 +86,10 @@ def scrape_full_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_
     # do the comments detail scrape
     for sub in df_sub.index:
         sub_id = df_sub.loc[sub]['id']
-        sub_comms = df_sub.loc[sub]['comments']
+        num_comms = df_sub.loc[sub]['num_comments']
         if ('link_id' in df_comm) and (f't3_{sub_id}' in [str(e) for e in df_comm['link_id']]):
             continue
-        keep_commscraping = len(sub_comms)>0
+        keep_commscraping = num_comms>0
         current_start = 1
         comms_so_far = 0
         mini_comm = pd.DataFrame()
@@ -163,7 +115,7 @@ def scrape_full_comments(subreddit_name, df_sub, backup_pkl_in=None, backup_pkl_
                 current_start = int(created_utc_now_comm + 1)
                 print(f'new batch comments count: {mini_comm_new.shape[0]}, next scanning {current_start}-?', flush=True)
                 comms_so_far += max(500, mini_comm_new.shape[0])
-                keep_commscraping = (comms_so_far < len(sub_comms))
+                keep_commscraping = (comms_so_far < num_comms)
                 time.sleep(1)
             else:
                 keep_commscraping = False
@@ -190,20 +142,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # do post scrapes
-    if not exists(f'{args.year}_posts_draft.pkl'):
+    if not exists(f'{args.year}_posts.pkl'):
         backup_posts = f'{args.year}_01_backup.pkl'
         df_sub = scrape_subreddit_posts(args.subreddit, args.year, backup_pkl_in=backup_posts, backup_pkl_out=backup_posts)
-        # export checkpoint scrapes
-        df_sub.to_csv(f'{args.year}_posts_draft.csv')
-        df_sub.to_pickle(f'{args.year}_posts_draft.pkl')
-        # df_sub.to_hdf(f'{args.year}_posts_draft.h5', key=f'data')
-    else:
-        df_sub = pd.read_pickle(f'{args.year}_posts_draft.pkl')
-    
-    # do per-post comment list scrapes
-    if not exists(f'{args.year}_posts.pkl'):
-        backup_posts = f'{args.year}_02_backup.pkl'
-        df_sub = scrape_post_comments(args.subreddit, df_sub, backup_pkl_in=backup_posts, backup_pkl_out=backup_posts)
         # export checkpoint scrapes
         df_sub.to_csv(f'{args.year}_posts.csv')
         df_sub.to_pickle(f'{args.year}_posts.pkl')
@@ -213,7 +154,7 @@ if __name__ == "__main__":
     
     # do comment detail scrapes
     if not exists(f'{args.year}_comments.pkl'):
-        backup_posts = f'{args.year}_03_backup.pkl'
+        backup_posts = f'{args.year}_02_backup.pkl'
         df_comm = scrape_full_comments(args.subreddit, df_sub, backup_pkl_in=backup_posts, backup_pkl_out=backup_posts)
         # export checkpoint scrapes
         df_comm.to_csv(f'{args.year}_comments.csv')
