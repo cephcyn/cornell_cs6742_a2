@@ -79,15 +79,24 @@ def scrape_full_comments(subreddit_name, df_sub, backup_fname_in=None, backup_fn
     if (backup_fname_in is not None) and exists(f'{backup_fname_in}.csv'):
         df_comm = pd.read_csv(f'{backup_fname_in}.csv')
         print(f'Loaded checkpoint: {backup_fname_in}.csv')
+        if exists(f'{backup_fname_in}_reads.csv'):
+            df_triedreads = pd.read_csv(f'{backup_fname_in}_reads.csv')
+            print(f'Loaded TRIEDREADS checkpoint: {backup_fname_in}_reads.csv')
     else:
         df_comm = pd.DataFrame()
+        df_triedreads = pd.DataFrame(columns=['link_id'])
         print(f'Started from scratch')
     
     # do the comments detail scrape
     for sub in df_sub.index:
         sub_id = df_sub.loc[sub]['id']
         num_comms = df_sub.loc[sub]['num_comments']
+        if (df_triedreads['link_id'] == f't3_{sub_id}').any():
+            # has already been logged in the triedreads
+            continue
         if ('link_id' in df_comm) and (f't3_{sub_id}' in [str(e) for e in df_comm['link_id']]):
+            # has not been logged in triedreads, but has already been scraped
+            df_triedreads = df_triedreads.append({'link_id': f't3_{sub_id}'}, ignore_index=True)
             continue
         keep_commscraping = num_comms>0
         current_start = 1
@@ -105,6 +114,7 @@ def scrape_full_comments(subreddit_name, df_sub, backup_fname_in=None, backup_fn
                 print(e, flush=True)
                 if backup_fname_out is not None:
                     df_comm.to_csv(f'{backup_fname_out}.csv', index=False)
+                    df_triedreads.to_csv(f'{backup_fname_out}_reads.csv', index=False)
                     print(f'Saved checkpoint: {backup_fname_out}.csv')
                 sys.exit()
             if ('data' in data) and len(data['data'])>0:
@@ -120,6 +130,7 @@ def scrape_full_comments(subreddit_name, df_sub, backup_fname_in=None, backup_fn
             else:
                 keep_commscraping = False
         df_comm = df_comm.append(mini_comm)
+        df_triedreads = df_triedreads.append({'link_id': f't3_{sub_id}'}, ignore_index=True)
         print(f'finished indexing comments from one submission', flush=True)
     print(f'comments count {df_comm.shape[0]}')
             
@@ -131,6 +142,7 @@ def scrape_full_comments(subreddit_name, df_sub, backup_fname_in=None, backup_fn
     df_comm = df_comm.reset_index(drop=True)
     if backup_fname_out is not None:
         df_comm.to_csv(f'{backup_fname_out}.csv', index=False)
+        df_triedreads.to_csv(f'{backup_fname_out}_reads.csv', index=False)
     return df_comm
 
 
