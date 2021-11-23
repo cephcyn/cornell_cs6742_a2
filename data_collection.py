@@ -82,6 +82,9 @@ def scrape_full_comments(subreddit_name, df_sub, backup_fname_in=None, backup_fn
         if exists(f'{backup_fname_in}_reads.csv'):
             df_triedreads = pd.read_csv(f'{backup_fname_in}_reads.csv')
             print(f'Loaded TRIEDREADS checkpoint: {backup_fname_in}_reads.csv')
+        else:
+            df_triedreads = pd.DataFrame(columns=['link_id'])
+            print(f'Created TRIEDREADS checkpoint: {backup_fname_in}_reads.csv')
     else:
         df_comm = pd.DataFrame()
         df_triedreads = pd.DataFrame(columns=['link_id'])
