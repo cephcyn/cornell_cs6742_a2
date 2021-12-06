@@ -5,6 +5,7 @@ channels:
 dependencies:
   - jupyterlab
   - matplotlib
+  - nltk
   - numpy
   - pandas
   - pytables
